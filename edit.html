@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Review Reviews</title>
+
+	<style>
+:root {
+	--u: 1.5vw;
+}
+body {
+	margin: 0;
+	background: #000;
+}
+*[hidden] {
+	display: none !important;
+}
+
+main {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+
+	width: 40vh;
+	height: 100dvh;
+}
+
+#queue {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+
+	width: 100%;
+	height: 70vh;
+	border: 1px solid red;
+
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	z-index: 1;
+
+	&[data-reset="1"] .card {
+		transition: none;
+	}
+}
+
+.card {
+	--n: 0;
+	--x: 0;
+	display: inline-block;
+	background: #fff;
+
+	width: calc(100% - 5vh * (1 - var(--anim)/var(--n)) * var(--n));
+	height: 60vh;
+
+	position: absolute;
+	border: 1px solid blue;
+
+	z-index: calc(4 - var(--n));
+	transform: translate(calc(var(--x)*1px), calc(50px * (1 - var(--anim)/var(--n)) * var(--n))) rotate(calc(var(--x) * .02deg));
+	opacity: calc(1 - (1/9 * (var(--n) - var(--anim))*(var(--n) - var(--anim))));
+	transition: .1s;
+}
+#active {
+	cursor: grab;
+	user-select: none;
+	touch-action: none;
+
+	transition: transform .3s;
+
+	&[data-drag="1"] {
+		cursor: grabbing;
+		transition: none;
+	}
+}
+
+
+
+@media only screen and (max-aspect-ratio: 3/7) {
+	main {
+		width: 80vw;
+	}
+}
+@media only screen and (min-aspect-ratio: 1/1) {
+	:root {
+		--u: 1.2vh;
+	}
+}
+	</style>
+</head>
+<body>
+	<main>
+		<div id="top"></div>
+		<div id="queue" style="--anim: 0;">
+			<div class="card" id="active"></div>
+			<div class="card" style="--n: 1;" id="second"></div>
+			<div class="card" style="--n: 2;"></div>
+			<div class="card" style="--n: 3;"></div>
+		</div>
+		<div id="menu"></div>
+	</main>
+
+	<script>
+		const cardqueue = document.getElementById('queue');
+
+		async function wait(ms) {
+			return new Promise(resolve => setTimeout(resolve, ms));
+		}
+		async function anim() {
+			for (let n = 1; n <= 100; n++) {
+				cardqueue.style.setProperty('--anim', n/100);
+				await wait(10);
+			}
+			await wait(10);
+			cardqueue.style.setProperty('--anim', 0/100);
+		}
+
+		const activecard = document.getElementById('active');
+		const secondcard = document.getElementById('second');
+
+		let start;
+		activecard.addEventListener('pointerdown', e => {
+			if (cardqueue.dataset.ignore == '1') return;
+			start = e.clientX;
+			activecard.dataset.drag = '1';
+		});
+		document.addEventListener('pointermove', e => {
+			if (activecard.dataset.drag != '1' || cardqueue.dataset.ignore == '1') return;
+			let delta = e.clientX - start;
+			activecard.style.setProperty('--x', delta);
+			cardqueue.style.setProperty('--anim', Math.min(Math.abs(delta)/200, 1));
+		});
+		const release = e => {
+			if (activecard.dataset.drag != '1' || cardqueue.dataset.ignore == '1') return;
+			activecard.dataset.drag = '0';
+
+			delta = e.clientX - start;
+			if (Math.abs(delta) >= 200) {
+				cardqueue.dataset.ignore = '1';
+				cardqueue.style.setProperty('--anim', 1);
+				activecard.style.setProperty('--x', window.innerWidth * (delta > 0 ? 1 : -1));
+				setTimeout(() => {
+					activecard.innerHTML = secondcard.innerHTML;
+
+					cardqueue.dataset.reset = '1';
+					activecard.style.setProperty('--x', 0);
+					cardqueue.style.setProperty('--anim', 0);
+					setTimeout(() => {
+						cardqueue.dataset.reset = '0';
+						cardqueue.dataset.ignore = '0';
+					}, 50);
+
+					// loadNext();
+					
+				}, 100);
+			} else {
+				activecard.style.setProperty('--x', 0);
+				cardqueue.style.setProperty('--anim', 0);
+			}
+		};
+		document.addEventListener('pointerup', release);
+		document.addEventListener('pointercancel', release);
+	</script>
+</body>
+</html>
