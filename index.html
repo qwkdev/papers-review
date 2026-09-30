@@ -18,26 +18,46 @@ body {
 	display: none !important;
 }
 
-main {
+#top {
 	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
+	top: .5vh;
+	right: .5vh;
 
-	width: 40vh;
-	height: 100dvh;
-}
+	display: flex;
+	align-items: center;
+	justify-content: end;
 
-#logo {
-	text-align: center;
-	color: #fff;
-	font-family: Arial;
-	font-weight: 700;
-	font-size: 2vh;
-	margin: 1vh 0;
+	button {
+		height: 4vh;
+		font-size: 1.75vh;
+		font-weight: 600;
+		color: #000;
+		
+		display: flex;
+		align-items: center;
+		justify-content: center;
 
-	&::selection {
-		background: #fff7;
+		background: #fff;
+		border-radius: 4vh;
+		border: none;
+		padding: 0 2vh;
+		gap: .5vh;
+
+		transition: .2s;
+		
+		svg {
+			stroke: #000;
+			height: 60%;
+			aspect-ratio: 1/1;
+		}
+
+		&:hover {
+			transform: scale(1.05);
+
+			&:active {
+				transform: scale(1);
+			}
+		}
 	}
 }
 #queue {
@@ -46,7 +66,7 @@ main {
 	left: 50%;
 	transform: translate(-50%, -50%);
 
-	width: 100%;
+	width: 40vh;
 	height: 63vh;
 	/* border: 1px solid red; */
 
@@ -106,18 +126,25 @@ main {
 	</style>
 </head>
 <body>
-	<main>
-		<h1 id="logo">r.scotpapers.com</h1>
-		<div id="queue" style="--anim: 0;">
-			<div class="card" id="active"></div>
-			<div class="card" style="--n: 1;" id="second"></div>
-			<div class="card" style="--n: 2;"></div>
-			<div class="card" style="--n: 3;"></div>
+	<div id="top">
+		<button>
+			<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g><path d="M3 8H16.5C18.9853 8 21 10.0147 21 12.5C21 14.9853 18.9853 17 16.5 17H3M3 8L6 5M3 8L6 11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>
+			Undo
+		</button>
+	</div>
+	<div id="queue" style="--anim: 0;">
+		<div class="card" id="active">
+			<p>Example reivew body</p>
+			<h3>&ndash;&nbsp; Name</h3>
 		</div>
-	</main>
+		<div class="card" style="--n: 1;" id="second"></div>
+		<div class="card" style="--n: 2;"></div>
+		<div class="card" style="--n: 3;"></div>
+	</div>
 
 	<script>
 		const target = 200;
+		let active = false;
 		const cardqueue = document.getElementById('queue');
 
 		async function wait(ms) {
@@ -137,7 +164,7 @@ main {
 
 		let start;
 		activecard.addEventListener('pointerdown', e => {
-			if (cardqueue.dataset.ignore == '1') return;
+			if (!active || cardqueue.dataset.ignore == '1') return;
 			start = e.clientX;
 			activecard.dataset.drag = '1';
 		});
