@@ -97,6 +97,48 @@ body {
 	transform: translate(calc(var(--x)*1px), calc(1.5vh * (1 - var(--anim)/var(--n)) * var(--n))) rotate(calc(var(--x) * .02deg));
 	opacity: calc(1 - (1/9 * (var(--n) - var(--anim))*(var(--n) - var(--anim))));
 	transition: .1s;
+
+	box-sizing: border-box;
+	padding: 3vh;
+
+	display: grid;
+	grid-template-columns: 1fr;
+	grid-template-rows: auto 1fr auto auto;
+	align-items: flex-end;
+
+	p, h2, h3, h4, h5 {
+		grid-column: 1;
+		color: #000;
+		font-family: Arial;
+		font-weight: 500;
+		margin: 0;
+	}
+	p {
+		grid-row: 2;
+		align-self: baseline;
+		font-size: 2vh;
+	}
+	h2, h3 {
+		grid-row: 3;
+		font-size: 2vh;
+		margin: 1vh 0;
+	}
+	h4, h5 {
+		&:first-of-type {
+			grid-row: 1;
+			margin-bottom: .5vh;
+		}
+		&:last-of-type {
+			grid-row: 4;
+		}
+		font-size: 1.2vh;
+	}
+	h2, h4 {
+		justify-self: end;
+	}
+	h3 {
+		color: #fa0;
+	}
 }
 #active {
 	cursor: grab;
@@ -127,16 +169,24 @@ body {
 </head>
 <body>
 	<div id="top">
-		<button>
+		<button onclick="undo()">
 			<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g><path d="M3 8H16.5C18.9853 8 21 10.0147 21 12.5C21 14.9853 18.9853 17 16.5 17H3M3 8L6 5M3 8L6 11" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>
 			Undo
 		</button>
 	</div>
 	<div id="queue" style="--anim: 0;">
 		<div class="card" id="active">
-			<p>Example reivew body</p>
-			<h3>&ndash;&nbsp; Name</h3>
+			<p>Loading...</p>
 		</div>
+		<!-- <div class="card" id="active">
+			<h5>#1234</h5>
+			<h4>12/34</h4>
+			<p>Example review body</p>
+			<h3>&#9733;&#9733;&#9733;&#9733;&#9734;</h3>
+			<h2>&ndash;&nbsp; Name</h2>
+			<h5>123.123.123.123</h5>
+			<h4>30/09/26 &nbsp;&bullet;&nbsp; 15:01:07</h4>
+		</div> -->
 		<div class="card" style="--n: 1;" id="second"></div>
 		<div class="card" style="--n: 2;"></div>
 		<div class="card" style="--n: 3;"></div>
@@ -144,7 +194,42 @@ body {
 
 	<script>
 		const target = 200;
-		let active = false;
+		let active = true;
+		let current = -1;
+
+		const SERVER = 'https://qwk.pythonanywhere.com/contact';
+		async function checkAPIKey(key) {
+			const resp = await fetch(`${SERVER}/check?key=${key}`, { method: 'GET' })
+				.then(resp => resp.json())
+				.catch(e => console.error('Error checking API key:', e));
+
+			return resp && resp['valid'];
+		}
+		async function getAPIKey() {
+			let current = localStorage.getItem('contact-api-key');
+			if (current && await checkAPIKey(current)) {
+				return current;
+			}
+			localStorage.removeItem('contact-api-key');
+
+			while (1) {
+				const newKey = prompt('Enter API Key:');
+				if (newKey && await checkAPIKey(newKey)) {
+					localStorage.setItem('contact-api-key', newKey);
+					return newKey;
+				} else {
+					alert('Invalid API Key, please try again.');
+				}
+			}
+		}
+
+		let API_KEY;
+		(async () => {
+			API_KEY = await getAPIKey();
+			init();
+		})();
+
+
 		const cardqueue = document.getElementById('queue');
 
 		async function wait(ms) {
@@ -174,6 +259,60 @@ body {
 			activecard.style.setProperty('--x', delta);
 			cardqueue.style.setProperty('--anim', Math.min(Math.abs(delta)/target, 1));
 		});
+
+
+
+		let reviews = [];
+		function init() {
+			fetch(`${SERVER}/api?key=${API_KEY}`, { method: 'GET' })
+				.then(r => r.json())
+				.then(data => {
+					// if (!data.success) throw Error(data.error || 'Error');
+					// reviews = data.reviews;
+					reviews.push([
+						// Done! text
+					]);
+
+					activecard.innerHTML = '<p>Swipe RIGHT to add,<br>Swipe LEFT to delete</p>';
+					current = -1;
+					loadNext();
+					active = true;
+				})
+				.catch(e => {
+					alert('Error fetching reviews:', e);
+					console.error('Error fetching reviews:', e);
+				});
+		}
+
+		function parseISO(isoStr) {
+			const date = new Date(isoStr);
+			const pad = (n) => n.toString().padStart(2, '0');
+			return [
+				`${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear().toString().slice(-2)}`,
+				`${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+			];
+		}
+		function loadNext() {
+			const r = reviews[current+1];
+			secondcard.innerHTML = `
+				<h5>#${r[0]}</h5>
+				<h4>${current+2}/${reviews.length-1}</h4>
+				<p>Example review body</p>
+				<h3>&#9733;&#9733;&#9733;&#9733;&#9734;</h3>
+				<h2>&ndash;&nbsp; Name</h2>
+				<h5>123.123.123.123</h5>
+				<h4>${parseISO(r[1]).join(' &nbsp;&bullet;&nbsp; ')}</h4>
+			`;
+		}
+		function undo() {
+			// TODO
+		}
+
+		async function edit(edits) {
+			// TODO
+		}
+
+
 		const release = e => {
 			if (activecard.dataset.drag != '1' || cardqueue.dataset.ignore == '1') return;
 			activecard.dataset.drag = '0';
@@ -183,10 +322,14 @@ body {
 				cardqueue.dataset.ignore = '1';
 				cardqueue.style.setProperty('--anim', 1);
 				activecard.style.setProperty('--x', window.innerWidth * (delta > 0 ? 1 : -1));
-				setTimeout(() => {
-					// swipe(activecard.dataset.value, delta > 0);
+				setTimeout(async () => {
+					if (current < review.length-1) {
+						if (current >= 0) {
+							// edit status to (delta > 0 ? 1 : -1)
+						}
+						current++;
+					} else active = false;
 					activecard.innerHTML = secondcard.innerHTML;
-					activecard.dataset.value = secondcard.dataset.value;
 
 					cardqueue.dataset.reset = '1';
 					activecard.style.setProperty('--x', 0);
@@ -196,8 +339,7 @@ body {
 						cardqueue.dataset.ignore = '0';
 					}, 50);
 
-					// loadNext();
-					
+					if (current < review.length-1) loadNext();
 				}, 100);
 			} else {
 				activecard.style.setProperty('--x', 0);
