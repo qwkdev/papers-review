@@ -275,7 +275,7 @@ body {
 
 					activecard.innerHTML = '<p>Swipe RIGHT to add,<br>Swipe LEFT to delete</p>';
 					current = -1;
-					loadNext();
+					loadReview(current+1, secondcard);
 					active = true;
 				})
 				.catch(e => {
@@ -292,11 +292,11 @@ body {
 				`${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 			];
 		}
-		function loadNext() {
-			const r = reviews[current+1];
-			secondcard.innerHTML = `
+		function loadReview(ri, card) {
+			const r = reviews[ri];
+			card.innerHTML = `
 				<h5>#${r[0]}</h5>
-				<h4>${current+2}/${reviews.length-1}</h4>
+				<h4>${ri+1}/${reviews.length-1}</h4>
 				<p>Example review body</p>
 				<h3>&#9733;&#9733;&#9733;&#9733;&#9734;</h3>
 				<h2>&ndash;&nbsp; Name</h2>
@@ -304,12 +304,32 @@ body {
 				<h4>${parseISO(r[1]).join(' &nbsp;&bullet;&nbsp; ')}</h4>
 			`;
 		}
-		function undo() {
-			// TODO
+		async function undo() {
+			if (current <= 0) return;
+
+			active = false;
+
+			loadReview(current-1, activecard);
+			loadReview(current, secondcard);
+
+			// await edit status to 0
+
+			active = true;
+			current -= 1;
 		}
 
-		async function edit(edits) {
-			// TODO
+		function edit(edits) {
+			return fetch(`${SERVER}/...`, {
+				method: 'POST',
+				headers: {
+					
+				}
+			}).then(r => r.json()) .catch(e => {
+				alert('Error fetching reviews:', e);
+				console.error('Error fetching reviews:', e);
+
+				return { success: false, error: e };
+			});
 		}
 
 
