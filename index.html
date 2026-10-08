@@ -11,8 +11,10 @@
 }
 body {
 	margin: 0;
-	background: #3b00ff; background-image: linear-gradient(to bottom, #3b00ff, #00f5aa);
+	background: #3b00ff;
+	background-image: linear-gradient(to bottom, #3b00ff, #00f5aa);
 	height: 100dvh;
+	overflow: hidden;
 }
 *[hidden] {
 	display: none !important;
@@ -86,7 +88,8 @@ body {
 	display: inline-block;
 	background: #fff;
 
-	width: calc(100% - 4vh * (1 - var(--anim)/var(--n)) * var(--n));
+	/* width: calc(100% - 4vh * (1 - var(--anim)/var(--n)) * var(--n)); */
+	width: calc(100% - 4vh * (var(--n) - var(--anim)));
 	height: 60vh;
 
 	position: absolute;
@@ -106,17 +109,26 @@ body {
 	grid-template-rows: auto 1fr auto auto;
 	align-items: flex-end;
 
+	overflow: hidden;
+
 	p, h2, h3, h4, h5 {
 		grid-column: 1;
 		color: #000;
 		font-family: Arial;
 		font-weight: 500;
 		margin: 0;
+		width: 49%;
+		white-space: nowrap;
+		overflow: hidden;
 	}
 	p {
 		grid-row: 2;
 		align-self: baseline;
 		font-size: 2vh;
+		width: 100%;
+		overflow: scroll;
+		white-space: wrap;
+		max-height: 100%;
 	}
 	h2, h3 {
 		grid-row: 3;
@@ -135,6 +147,7 @@ body {
 	}
 	h2, h4 {
 		justify-self: end;
+		text-align: right;
 	}
 	h3 {
 		color: #fa0;
@@ -175,7 +188,7 @@ body {
 		</button>
 	</div>
 	<div id="queue" style="--anim: 0;">
-		<div class="card" id="active">
+		<div class="card" style="--n: 0;" id="active">
 			<p>Loading...</p>
 		</div>
 		<!-- <div class="card" id="active">
@@ -193,42 +206,67 @@ body {
 	</div>
 
 	<script>
+		function safeHTML(parent, content, clear=true) {
+			if (clear) parent.innerHTML = '';
+			for (let i = 0; i < content.length; i += 2) {
+				const n = document.createElement(content[i]);
+				n.textContent = content[i+1];
+				parent.appendChild(n);
+			}
+		}
+
 		const target = 200;
 		let active = true;
 		let current = -1;
 
-		const SERVER = 'https://qwk.pythonanywhere.com/contact';
-		async function checkAPIKey(key) {
-			const resp = await fetch(`${SERVER}/check?key=${key}`, { method: 'GET' })
-				.then(resp => resp.json())
-				.catch(e => console.error('Error checking API key:', e));
+		let API_KEY;
+		const SERVER = 'https://qwk.pythonanywhere.com/review';
 
-			return resp && resp['valid'];
+		function getClient() {
+			if (localStorage.getItem('client')) return localStorage.getItem('client');
+			let client = String.fromCharCode(...Array.from({ length: 6 }, () => Math.floor(Math.random()*26 + 65)));
+			client = `${client}-${Date.now()}`;
+			localStorage.setItem('client', client);
+			return client;
+		}
+		const client = getClient();
+
+		function post(route, body) {
+			return fetch(SERVER+route, {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ key: API_KEY, client, ...(body || {})})
+			}).then(r => r.json()).catch(e => {
+				alert(`Error fetching: ${e.message}`);
+				console.error(e);
+				return { success: false, error: e };
+			});
+		}
+
+		async function checkAPIKey(key) {
+			const resp = await post('/check', { key });
+			return resp && resp.valid;
 		}
 		async function getAPIKey() {
-			let current = localStorage.getItem('contact-api-key');
+			let current = localStorage.getItem('review-api-key');
 			if (current && await checkAPIKey(current)) {
 				return current;
 			}
-			localStorage.removeItem('contact-api-key');
+			localStorage.removeItem('review-api-key');
 
 			while (1) {
 				const newKey = prompt('Enter API Key:');
 				if (newKey && await checkAPIKey(newKey)) {
-					localStorage.setItem('contact-api-key', newKey);
+					localStorage.setItem('review-api-key', newKey);
 					return newKey;
 				} else {
 					alert('Invalid API Key, please try again.');
 				}
 			}
 		}
-
-		let API_KEY;
-		(async () => {
-			API_KEY = await getAPIKey();
-			init();
-		})();
-
 
 		const cardqueue = document.getElementById('queue');
 
@@ -260,28 +298,25 @@ body {
 			cardqueue.style.setProperty('--anim', Math.min(Math.abs(delta)/target, 1));
 		});
 
-
-
 		let reviews = [];
-		function init() {
-			fetch(`${SERVER}/api?key=${API_KEY}`, { method: 'GET' })
-				.then(r => r.json())
-				.then(data => {
-					// if (!data.success) throw Error(data.error || 'Error');
-					// reviews = data.reviews;
-					reviews.push([
-						// Done! text
-					]);
+		async function init() {
+			await post('/get').then(data => {
+				if (!data.success) throw Error(data.error);
+				reviews = data.reviews;
+				reviews.push('Done!');
 
-					activecard.innerHTML = '<p>Swipe RIGHT to add,<br>Swipe LEFT to delete</p>';
-					current = -1;
-					loadReview(current+1, secondcard);
-					active = true;
-				})
-				.catch(e => {
-					alert('Error fetching reviews:', e);
-					console.error('Error fetching reviews:', e);
-				});
+				activecard.innerHTML = '<p>Swipe RIGHT to add,<br>Swipe LEFT to delete</p>';
+				current = -1;
+				loadReview(current+1, secondcard);
+				active = true;
+			})
+			.catch(e => {
+				safeHTML(activecard, ['p', e]);
+				active = false;
+				console.error('Error fetching reviews:', e);
+			});
+
+			setInterval(() => post('/sync'), 10000);
 		}
 
 		function parseISO(isoStr) {
@@ -294,15 +329,15 @@ body {
 		}
 		function loadReview(ri, card) {
 			const r = reviews[ri];
-			card.innerHTML = `
-				<h5>#${r[0]}</h5>
-				<h4>${ri+1}/${reviews.length-1}</h4>
-				<p>Example review body</p>
-				<h3>&#9733;&#9733;&#9733;&#9733;&#9734;</h3>
-				<h2>&ndash;&nbsp; Name</h2>
-				<h5>123.123.123.123</h5>
-				<h4>${parseISO(r[1]).join(' &nbsp;&bullet;&nbsp; ')}</h4>
-			`;
+			safeHTML(card, Array.isArray(r) ? [
+				'h5', `#${r[0]}`,
+				'h4', `${ri+1}/${reviews.length-1}`,
+				'p', r[2],
+				'h3', `${'\u{2605}'.repeat(r[4])}${'\u{2606}'.repeat(5 - r[4])}`,
+				'h2', `\u{2013}\u{00a0} ${r[3]}`,
+				'h5', r[6],
+				'h4', parseISO(r[1]).join(' \u{00a0}\u{2022}\u{00a0} ')
+			] : ['p', r]);
 		}
 		async function undo() {
 			if (current <= 0) return;
@@ -312,26 +347,15 @@ body {
 			loadReview(current-1, activecard);
 			loadReview(current, secondcard);
 
-			// await edit status to 0
+			await edit(reviews[current-1][0], { status: 0 });
 
 			active = true;
 			current -= 1;
 		}
 
-		function edit(edits) {
-			return fetch(`${SERVER}/...`, {
-				method: 'POST',
-				headers: {
-					
-				}
-			}).then(r => r.json()) .catch(e => {
-				alert('Error fetching reviews:', e);
-				console.error('Error fetching reviews:', e);
-
-				return { success: false, error: e };
-			});
+		function edit(id, edits) {
+			return post('/edit', { id, ...edits})
 		}
-
 
 		const release = e => {
 			if (activecard.dataset.drag != '1' || cardqueue.dataset.ignore == '1') return;
@@ -343,12 +367,13 @@ body {
 				cardqueue.style.setProperty('--anim', 1);
 				activecard.style.setProperty('--x', window.innerWidth * (delta > 0 ? 1 : -1));
 				setTimeout(async () => {
-					if (current < review.length-1) {
-						if (current >= 0) {
-							// edit status to (delta > 0 ? 1 : -1)
-						}
-						current++;
-					} else active = false;
+					if (current < reviews.length-1) {
+						if (current >= 0) await edit(reviews[current][0], {
+							status: delta > 0 ? 1 : -1
+						});
+					}
+					current++;
+					active = current < reviews.length-1;
 					activecard.innerHTML = secondcard.innerHTML;
 
 					cardqueue.dataset.reset = '1';
@@ -359,7 +384,7 @@ body {
 						cardqueue.dataset.ignore = '0';
 					}, 50);
 
-					if (current < review.length-1) loadNext();
+					if (current < reviews.length-1) loadReview(current+1, secondcard);
 				}, 100);
 			} else {
 				activecard.style.setProperty('--x', 0);
@@ -368,6 +393,12 @@ body {
 		};
 		document.addEventListener('pointerup', release);
 		document.addEventListener('pointercancel', release);
+
+		(async () => {
+			API_KEY = await getAPIKey();
+			console.log('got', API_KEY);
+			init();
+		})();
 	</script>
 </body>
 </html>
