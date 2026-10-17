@@ -70,7 +70,6 @@ body {
 
 	width: 40vh;
 	height: 63vh;
-	/* border: 1px solid red; */
 
 	display: flex;
 	justify-content: center;
@@ -88,16 +87,14 @@ body {
 	display: inline-block;
 	background: #fff;
 
-	/* width: calc(100% - 4vh * (1 - var(--anim)/var(--n)) * var(--n)); */
-	width: calc(100% - 4vh * (var(--n) - var(--anim)));
+	width: 100%;
 	height: 60vh;
 
 	position: absolute;
-	/* border: 1px solid blue; */
 	border-radius: 2vh;
 
 	z-index: calc(4 - var(--n));
-	transform: translate(calc(var(--x)*1px), calc(1.5vh * (1 - var(--anim)/var(--n)) * var(--n))) rotate(calc(var(--x) * .02deg));
+	transform: translate(calc(var(--x)*1px), calc(3.5vh * (var(--n) - var(--anim)))) rotate(calc(var(--x) * .02deg)) scale(calc(1 - .1 * (var(--n) - var(--anim))), calc(1 - .07 * (var(--n) - var(--anim))));
 	opacity: calc(1 - (1/9 * (var(--n) - var(--anim))*(var(--n) - var(--anim))));
 	transition: .1s;
 
@@ -166,8 +163,6 @@ body {
 	}
 }
 
-
-
 @media only screen and (max-aspect-ratio: 3/7) {
 	main {
 		width: 80vw;
@@ -188,18 +183,9 @@ body {
 		</button>
 	</div>
 	<div id="queue" style="--anim: 0;">
-		<div class="card" style="--n: 0;" id="active">
+		<div class="card" style="--n: 0; --anim: 0;" id="active">
 			<p>Loading...</p>
 		</div>
-		<!-- <div class="card" id="active">
-			<h5>#1234</h5>
-			<h4>12/34</h4>
-			<p>Example review body</p>
-			<h3>&#9733;&#9733;&#9733;&#9733;&#9734;</h3>
-			<h2>&ndash;&nbsp; Name</h2>
-			<h5>123.123.123.123</h5>
-			<h4>30/09/26 &nbsp;&bullet;&nbsp; 15:01:07</h4>
-		</div> -->
 		<div class="card" style="--n: 1;" id="second"></div>
 		<div class="card" style="--n: 2;"></div>
 		<div class="card" style="--n: 3;"></div>
