@@ -201,7 +201,7 @@ body {
 			}
 		}
 
-		const target = 200;
+		const target = () => window.innerHeight / 5;
 		let active = true;
 		let current = -1;
 
@@ -281,7 +281,7 @@ body {
 			if (activecard.dataset.drag != '1' || cardqueue.dataset.ignore == '1') return;
 			let delta = e.clientX - start;
 			activecard.style.setProperty('--x', delta);
-			cardqueue.style.setProperty('--anim', Math.min(Math.abs(delta)/target, 1));
+			cardqueue.style.setProperty('--anim', Math.min(Math.abs(delta)/target(), 1));
 		});
 
 		let reviews = [];
@@ -348,7 +348,7 @@ body {
 			activecard.dataset.drag = '0';
 
 			delta = e.clientX - start;
-			if (Math.abs(delta) >= target) {
+			if (Math.abs(delta) >= target()) {
 				cardqueue.dataset.ignore = '1';
 				cardqueue.style.setProperty('--anim', 1);
 				activecard.style.setProperty('--x', window.innerWidth * (delta > 0 ? 1 : -1));
